@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+numpy
+pydantic
+openai
+requests
+pyyaml

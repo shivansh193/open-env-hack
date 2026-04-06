@@ -1,0 +1,158 @@
+name: synthetic-market-env
+version: "1.0.0"
+description: >
+  A synthetic financial market environment where LLM agents learn portfolio
+  management through sequential trading decisions. Market dynamics follow
+  real statistical mechanics (GARCH volatility clustering, HMM regime switching)
+  without using real historical data, eliminating lookahead bias entirely.
+
+tasks:
+  - id: task_1
+    name: "Single asset trend following"
+    difficulty: easy
+    description: >
+      Trade one asset through a stable trending regime. Identify momentum
+      direction, size positions accordingly, manage transaction costs.
+    max_steps: 60
+    grader: src.environment.MarketEnvironment._grade
+    win_condition: "Sharpe ratio > 0.3 over episode"
+
+  - id: task_2
+    name: "Dual asset regime navigation"
+    difficulty: medium
+    description: >
+      Manage two correlated assets through at least one regime switch.
+      Detect regime change from price behaviour, manage cross-asset
+      exposure, respond to news directionally.
+    max_steps: 60
+    grader: src.environment.MarketEnvironment._grade
+    win_condition: "Sharpe > 0.6, no single drawdown > 15%"
+
+  - id: task_3
+    name: "Portfolio under stress"
+    difficulty: hard
+    description: >
+      Four assets in two correlated pairs, volatile regime, frequent news
+      shocks. Hard drawdown limit — episode terminates early if drawdown
+      exceeds 20%. Survive the full episode with Sharpe > 1.0.
+    max_steps: 60
+    grader: src.environment.MarketEnvironment._grade
+    win_condition: "Sharpe > 1.0, survive full episode (drawdown hard cap 20%)"
+
+observation_space:
+  type: dict
+  fields:
+    - name: step
+      type: int
+      range: [0, 60]
+      description: "Current step in episode"
+
+    - name: prices
+      type: "dict[str, list[float]]"
+      description: "Last 10 closing prices per asset. Keys: asset_A [, asset_B, asset_C, asset_D]"
+
+    - name: volume
+      type: "dict[str, list[int]]"
+      description: "Last 10 synthetic volume readings per asset (correlated with volatility)"
+
+    - name: volatility_signal
+      type: float
+      range: [0.0, 1.0]
+      description: "Normalised volatility. High = choppy market. Scale down positions when > 0.7"
+
+    - name: news
+      type: "str | null"
+      description: "Headline string if a news event fired this step, else null"
+
+    - name: position
+      type: "dict[str, float]"
+      description: "Current shares held per asset. Negative = short position"
+
+    - name: cash
+      type: float
+      description: "Available cash (uninvested capital)"
+
+    - name: unrealized_pnl
+      type: float
+      description: "Mark-to-market P&L on open positions"
+
+    - name: episode_pnl
+      type: float
+      description: "Cumulative realised + unrealised P&L since episode start"
+
+    - name: drawdown
+      type: float
+      range: [0.0, 1.0]
+      description: "Current drawdown from episode peak portfolio value"
+
+    - name: step_return
+      type: float
+      description: "Portfolio return in the previous step"
+
+action_space:
+  type: dict
+  fields:
+    - name: asset_A
+      type: float
+      range: [-1.0, 1.0]
+      description: "Target allocation as fraction of total capital. Negative = short."
+      tasks: [task_1, task_2, task_3]
+
+    - name: asset_B
+      type: float
+      range: [-1.0, 1.0]
+      description: "Target allocation for asset_B."
+      tasks: [task_2, task_3]
+
+    - name: asset_C
+      type: float
+      range: [-1.0, 1.0]
+      description: "Target allocation for asset_C."
+      tasks: [task_3]
+
+    - name: asset_D
+      type: float
+      range: [-1.0, 1.0]
+      description: "Target allocation for asset_D."
+      tasks: [task_3]
+
+    - name: reasoning
+      type: str
+      required: false
+      description: "Agent's reasoning. Logged but not used in grading."
+
+reward:
+  type: float
+  formula: "step_return - transaction_cost - drawdown_penalty + episode_end_sharpe_bonus"
+  components:
+    - name: step_return
+      formula: "(portfolio_value_t - portfolio_value_{t-1}) / initial_capital"
+    - name: transaction_cost
+      formula: "0.001 * sum(|allocation_change|)"
+      description: "10bps per unit of allocation change. Penalises churning."
+    - name: drawdown_penalty
+      formula: "2.0 * max(0, drawdown - 0.10)"
+      description: "Heavy penalty when drawdown exceeds 10%."
+    - name: episode_end_bonus
+      formula: "sharpe_ratio * 0.5 (added at episode end)"
+
+environment:
+  initial_capital: 100000.0
+  max_leverage: 1.5
+  transaction_cost_rate: 0.001
+  episode_length: 60
+  reproducibility: "Pass seed=42 to /reset for identical episodes across runs"
+
+market_mechanics:
+  price_model: "GARCH(1,1) with HMM regime switching"
+  regimes:
+    - name: trending
+      drift: 0.0008
+      momentum: 0.6
+    - name: mean_reverting
+      drift: 0.0
+      momentum: -0.3
+  volatility: "GARCH(1,1): omega=2e-6, alpha=0.08, beta=0.90 (jittered ±20% per episode)"
+  correlation: "Cholesky decomposition from per-episode drawn correlation matrix"
+  news: "Poisson process, task-dependent rate. 50+ headline templates with consistent directional impact."
+  hidden_state: "Regime identity, GARCH params, correlation structure — agent must infer from observations"
