@@ -123,7 +123,7 @@ pip install -r requirements.txt
 ### Run the server
 
 ```bash
-uvicorn src.server:app --host 0.0.0.0 --port 8000
+uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
 
 ### Run inference (baseline agent)
@@ -135,6 +135,11 @@ HF_TOKEN=your_token_here \
 ENV_URL=http://127.0.0.1:8000 \
 python inference.py
 ```
+
+Stdout follows the mandatory format:
+- `[START] task=<task> env=<benchmark> model=<model>`
+- `[STEP] step=<n> action=<action> reward=<0.00> done=<true|false> error=<null|msg>`
+- `[END] success=<true|false> steps=<n> score=<0.000> rewards=<r1,r2,...>`
 
 ### Run validation (server must be running)
 
@@ -159,11 +164,12 @@ docker run -p 8000:8000 market-env
 market-env/
 ├── inference.py          # Baseline agent (root dir, required by spec)
 ├── openenv.yaml          # Environment metadata and task definitions
+├── pyproject.toml        # Build configuration
 ├── Dockerfile
 ├── requirements.txt
 ├── README.md
-├── src/
-│   ├── server.py         # FastAPI HTTP server (/reset, /step, /state)
+├── server/
+│   ├── app.py            # FastAPI HTTP server (/reset, /step, /state)
 │   ├── environment.py    # MarketEnvironment class, portfolio mechanics
 │   └── market_engine.py  # GARCH + HMM price generation, news system
 └── scripts/

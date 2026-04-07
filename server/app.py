@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from .environment import MarketEnvironment, TASK_CONFIGS
+from server.environment import MarketEnvironment, TASK_CONFIGS
 
 
 # ---------------------------------------------------------------------------
@@ -191,4 +191,13 @@ def get_state():
         raise HTTPException(status_code=500, detail=str(e))
 
     return {"state": _strip_internal(state)}
+
+
+def main():
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+
+if __name__ == "__main__":
+    main()
     

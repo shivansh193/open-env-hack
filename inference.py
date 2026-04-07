@@ -23,6 +23,7 @@ import sys
 import json
 import time
 import requests
+from typing import List, Optional
 from openai import OpenAI
 
 # ---------------------------------------------------------------------------
@@ -34,6 +35,7 @@ MODEL_NAME   = os.environ["MODEL_NAME"]
 HF_TOKEN     = os.environ["HF_TOKEN"]
 
 ENV_URL = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
+BENCHMARK = "synthetic-market-env"
 
 client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
@@ -233,6 +235,28 @@ def trim_history(messages: list, max_turns: int) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Logging helpers (mandatory format)
+# ---------------------------------------------------------------------------
+
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    error_val = error if error else "null"
+    done_val = str(done).lower()
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+
+
+# ---------------------------------------------------------------------------
 # Episode runner
 # ---------------------------------------------------------------------------
 
@@ -253,11 +277,11 @@ def run_episode(task_id: str) -> float:
     state = data["state"]
 
     # [START] log
-    print(json.dumps({"type": "START", "task_id": task_id, "step": 0}), flush=True)
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPTS[task_id]}]
-    total_reward = 0.0
-    score        = 0.0
+    rewards  = []
+    score    = 0.0
 
     while True:
         # Build user message
@@ -285,12 +309,9 @@ def run_episode(task_id: str) -> float:
         action = parse_action(action_text, task_id)
 
         # [STEP] log
-        print(json.dumps({
-            "type":      "STEP",
-            "step":      state["step"],
-            "action":    {k: v for k, v in action.items() if k != "reasoning"},
-            "reasoning": action.get("reasoning", ""),
-        }), flush=True)
+        # For the action string in logs, we'll use a compact representation
+        action_str = ",".join(f"{k}:{v:+.2f}" for k, v in action.items() if k != "reasoning")
+        # log_step placeholder (will be called after env.step() per requirement)
 
         # Step environment
         step_resp = requests.post(
@@ -305,7 +326,10 @@ def run_episode(task_id: str) -> float:
         reward       = result["reward"]
         done         = result["done"]
         info         = result["info"]
-        total_reward += reward
+        rewards.append(reward)
+
+        # [STEP] log (mandatory: immediately after env.step())
+        log_step(step=state["step"], action=action_str, reward=reward, done=done, error=None)
 
         # Append assistant turn to conversation history
         messages.append({"role": "assistant", "content": action_text})
@@ -315,12 +339,8 @@ def run_episode(task_id: str) -> float:
             break
 
     # [END] log
-    print(json.dumps({
-        "type":         "END",
-        "task_id":      task_id,
-        "total_reward": round(total_reward, 6),
-        "score":        score,
-    }), flush=True)
+    success = score >= 0.5  # arbitrary threshold for success
+    log_end(success=success, steps=state["step"], score=score, rewards=rewards)
 
     return score
 

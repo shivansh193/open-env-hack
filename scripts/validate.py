@@ -65,9 +65,9 @@ def check_files():
         ("Dockerfile",      "container definition"),
         ("README.md",       "documentation"),
         ("requirements.txt","dependencies"),
-        ("src/server.py",   "FastAPI server"),
-        ("src/environment.py", "environment logic"),
-        ("src/market_engine.py", "market engine"),
+        ("server/app.py",   "FastAPI server"),
+        ("server/environment.py", "server.environment.MarketEnvironment._grade logic"),
+        ("server/market_engine.py", "market engine"),
     ]
     for path, label in required:
         if os.path.exists(path):
@@ -83,7 +83,7 @@ def check_inference_script():
         fail("inference.py not found — skipping structure checks")
         return
 
-    with open("inference.py") as f:
+    with open("inference.py", encoding="utf-8") as f:
         src = f.read()
 
     checks = [
@@ -92,9 +92,13 @@ def check_inference_script():
         ("os.environ[\"MODEL_NAME\"]",   "MODEL_NAME read from env"),
         ("os.environ[\"HF_TOKEN\"]",     "HF_TOKEN read from env"),
         ("OpenAI(",                    "OpenAI client instantiated"),
-        ('"type": "START"',            "[START] log emitted"),
-        ('"type": "STEP"',             "[STEP] log emitted"),
-        ('"type": "END"',              "[END] log emitted"),
+        ("log_start(",                 "log_start function used"),
+        ("log_step(",                  "log_step function used"),
+        ("log_end(",                   "log_end function used"),
+        ('f"[START] task=',            "[START] format correct"),
+        ('f"[STEP] step=',             "[STEP] format correct"),
+        ('f"[END] success=',           "[END] format correct"),
+        ("BENCHMARK =",                "BENCHMARK constant defined"),
         ("task_1",                     "task_1 referenced"),
         ("task_2",                     "task_2 referenced"),
         ("task_3",                     "task_3 referenced"),
@@ -119,7 +123,7 @@ def check_openenv_yaml():
         warn("PyYAML not installed — skipping yaml parse check")
         return
 
-    with open("openenv.yaml") as f:
+    with open("openenv.yaml", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     required_top = ["name", "version", "description", "tasks",
@@ -373,7 +377,7 @@ def main():
     if args.start_server:
         print("\n  Starting server...")
         server_proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "src.server:app",
+            [sys.executable, "-m", "uvicorn", "server.app:app",
              "--host", "127.0.0.1", "--port", "8000"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )

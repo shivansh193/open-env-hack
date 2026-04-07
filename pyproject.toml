@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synthetic-market-env"
+version = "1.0.0"
+description = "Synthetic financial market environment for LLM agents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "numpy",
+    "pydantic",
+    "openai",
+    "requests",
+    "pyyaml",
+    "openenv"
+]
+
+[project.scripts]
+server = "server.app:main"

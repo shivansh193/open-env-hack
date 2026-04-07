@@ -14,7 +14,7 @@ tasks:
       Trade one asset through a stable trending regime. Identify momentum
       direction, size positions accordingly, manage transaction costs.
     max_steps: 60
-    grader: src.environment.MarketEnvironment._grade
+    grader: server.environment.MarketEnvironment._grade
     win_condition: "Sharpe ratio > 0.3 over episode"
 
   - id: task_2
@@ -25,7 +25,7 @@ tasks:
       Detect regime change from price behaviour, manage cross-asset
       exposure, respond to news directionally.
     max_steps: 60
-    grader: src.environment.MarketEnvironment._grade
+    grader: server.environment.MarketEnvironment._grade
     win_condition: "Sharpe > 0.6, no single drawdown > 15%"
 
   - id: task_3
@@ -36,7 +36,7 @@ tasks:
       shocks. Hard drawdown limit — episode terminates early if drawdown
       exceeds 20%. Survive the full episode with Sharpe > 1.0.
     max_steps: 60
-    grader: src.environment.MarketEnvironment._grade
+    grader: server.environment.MarketEnvironment._grade
     win_condition: "Sharpe > 1.0, survive full episode (drawdown hard cap 20%)"
 
 observation_space:
