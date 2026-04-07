@@ -1,3 +1,11 @@
+---
+title: Openenv Hack
+emoji: 📈
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+---
 # Synthetic Market RL Environment
 
 A synthetic financial market environment for LLM agents, built on the OpenEnv framework. The agent acts as a portfolio manager making sequential trading decisions over 60-step episodes.
