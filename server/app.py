@@ -125,12 +125,13 @@ def list_tasks():
 
 
 @app.post("/reset", tags=["env"])
-def reset(body: ResetRequest):
+def reset(body: ResetRequest = ResetRequest()):
     """
     Start a new episode.
 
     Returns the initial state dict. No positions are open at step 0.
     Pass seed=42 for the reproducible baseline run.
+    Body is optional — defaults to task_1 with no seed.
     """
     global env
     try:
@@ -200,4 +201,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
