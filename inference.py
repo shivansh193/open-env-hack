@@ -283,7 +283,7 @@ def run_episode(task_id: str) -> float:
 
     messages = [{"role": "system", "content": SYSTEM_PROMPTS[task_id]}]
     rewards  = []
-    score    = 0.0
+    score    = 0.001
 
     while True:
         # Build user message
@@ -335,7 +335,7 @@ def run_episode(task_id: str) -> float:
         messages.append({"role": "assistant", "content": action_text})
 
         if done:
-            score = info.get("grader_score", 0.0)
+            score = info.get("grader_score", 0.001)
             break
 
     # [END] log
@@ -362,9 +362,9 @@ def main():
             score = run_episode(task_id)
             scores[task_id] = score
         except Exception as e:
-            print(f"[END] success=false steps=0 score=0.000 rewards=", flush=True)
+            print(f"[END] success=false steps=0 score=0.001 rewards=", flush=True)
             print(f"[ERROR] {task_id} failed: {e}", file=sys.stderr)
-            scores[task_id] = 0.0
+            scores[task_id] = 0.001
 
         # Brief pause between tasks
         time.sleep(1)
