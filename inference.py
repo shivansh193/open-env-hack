@@ -30,14 +30,13 @@ from openai import OpenAI
 # Environment variables
 # ---------------------------------------------------------------------------
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1")
+API_BASE_URL = os.environ.get("API_BASE_URL")
 MODEL_NAME   = os.environ.get("MODEL_NAME", "llama-3.1-8b-instant")
-HF_TOKEN     = os.environ.get("API_KEY", "")
+HF_TOKEN     = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
 
 ENV_URL = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
 BENCHMARK = "synthetic-market-env"
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 # ---------------------------------------------------------------------------
 # History window — keep system prompt + last N turns to stay within token limits
@@ -261,6 +260,11 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # ---------------------------------------------------------------------------
 
 def run_episode(task_id: str) -> float:
+    client = OpenAI(
+        base_url=os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1"),
+        api_key=os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
+    )
+
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     """
