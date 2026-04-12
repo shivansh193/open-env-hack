@@ -389,29 +389,30 @@ class MarketEnvironment:
         Compute 0.0–1.0 grader score for the completed episode.
         """
         returns = self.step_returns
-        if len(returns) < 2:
-            return 0.0
+        score = 0.0
+        if len(returns) >= 2:
+            sharpe  = self._compute_sharpe()
+            max_dd  = self._max_drawdown()
+            cfg     = self.task_cfg
+            thresh  = cfg["sharpe_threshold"]
 
-        sharpe  = self._compute_sharpe()
-        max_dd  = self._max_drawdown()
-        cfg     = self.task_cfg
-        thresh  = cfg["sharpe_threshold"]
+            if self.task_id == "task_1":
+                score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
 
-        if self.task_id == "task_1":
-            score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
+            elif self.task_id == "task_2":
+                score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
+                if max_dd > 0.15:
+                    score *= 0.5    # penalise but don't zero
 
-        elif self.task_id == "task_2":
-            score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
-            if max_dd > 0.15:
-                score *= 0.5    # penalise but don't zero
+            elif self.task_id == "task_3":
+                if self.early_terminated:
+                    score = 0.001     # hard fail
+                else:
+                    score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
 
-        elif self.task_id == "task_3":
-            if self.early_terminated:
-                return 0.0      # hard fail
-            score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
+            else:
+                score = 0.0
 
-        else:
-            score = 0.0
-
-        # Episode-end Sharpe bonus absorbed into score (already computed above)
+        # Final clamping to strictly (0, 1) as per requirements
+        score = max(0.001, min(0.999, score))
         return round(score, 6)
