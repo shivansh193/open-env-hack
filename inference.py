@@ -30,9 +30,9 @@ from openai import OpenAI
 # Environment variables
 # ---------------------------------------------------------------------------
 
-API_BASE_URL = os.environ["API_BASE_URL"]
-MODEL_NAME   = os.environ["MODEL_NAME"]
-HF_TOKEN     = os.environ["HF_TOKEN"]
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api-inference.huggingface.co/v1")
+MODEL_NAME   = os.environ.get("MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.3")
+HF_TOKEN     = os.environ.get("HF_TOKEN", "")
 
 ENV_URL = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
 BENCHMARK = "synthetic-market-env"
