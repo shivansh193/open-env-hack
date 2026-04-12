@@ -33,9 +33,8 @@ from openai import OpenAI
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.groq.com/openai/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME", "llama-3.1-8b-instant")
 HF_TOKEN     = os.getenv("API_KEY", os.getenv("HF_TOKEN", ""))
-
-ENV_URL   = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
-BENCHMARK = "synthetic-market-env"
+ENV_URL      = os.environ.get("ENV_URL", "https://shivansh193-openenv-hack.hf.space")
+BENCHMARK    = "synthetic-market-env"
 
 # ---------------------------------------------------------------------------
 # History window — keep system prompt + last N turns to stay within token limits
