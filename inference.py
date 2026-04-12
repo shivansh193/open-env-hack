@@ -5,12 +5,13 @@ Baseline agent script for the Synthetic Market RL Environment.
 Must be run from the project root directory.
 
 Usage:
-    API_BASE_URL=<url> MODEL_NAME=<model> HF_TOKEN=<token> python inference.py
+    API_BASE_URL=<url> MODEL_NAME=<model> API_KEY=<token> python inference.py
 
 Environment variables (required):
     API_BASE_URL   — LLM API base URL
     MODEL_NAME     — model identifier
-    HF_TOKEN       — Hugging Face / API key
+    API_KEY        — API key (injected by evaluator)
+    HF_TOKEN       — fallback API key for local testing
 
 Stdout log format (strictly followed for evaluation):
     [START] {"type": "START", "task_id": ..., "step": 0}
@@ -34,9 +35,8 @@ API_BASE_URL = os.environ.get("API_BASE_URL")
 MODEL_NAME   = os.environ.get("MODEL_NAME", "llama-3.1-8b-instant")
 HF_TOKEN     = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
 
-ENV_URL = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
+ENV_URL   = os.environ.get("ENV_URL", "http://127.0.0.1:8000")
 BENCHMARK = "synthetic-market-env"
-
 
 # ---------------------------------------------------------------------------
 # History window — keep system prompt + last N turns to stay within token limits
@@ -243,7 +243,7 @@ def log_start(task: str, env: str, model: str) -> None:
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     error_val = error if error else "null"
-    done_val = str(done).lower()
+    done_val  = str(done).lower()
     print(
         f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
         flush=True,
@@ -260,18 +260,19 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # ---------------------------------------------------------------------------
 
 def run_episode(task_id: str) -> float:
-    client = OpenAI(
-        base_url=os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1"),
-        api_key=os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
-    )
-
-    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
-
     """
     Run one complete episode for the given task.
     Emits [START], [STEP], [END] logs to stdout.
     Returns the grader score.
     """
+    # Initialise client here so it picks up env vars injected at runtime
+    client = OpenAI(
+        base_url=os.environ.get("API_BASE_URL"),
+        api_key=os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
+    )
+
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
+
     # Reset environment
     resp = requests.post(
         f"{ENV_URL}/reset",
@@ -281,9 +282,6 @@ def run_episode(task_id: str) -> float:
     resp.raise_for_status()
     data  = resp.json()
     state = data["state"]
-
-    # [START] log
-    # log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPTS[task_id]}]
     rewards  = []
@@ -302,8 +300,8 @@ def run_episode(task_id: str) -> float:
             response = client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=messages,
-                max_tokens=200,     # action JSON needs <50 tokens; 200 is plenty
-                temperature=0.2,    # low temp for consistent JSON output
+                max_tokens=200,
+                temperature=0.2,
             )
             action_text = response.choices[0].message.content
         except Exception as e:
@@ -314,10 +312,8 @@ def run_episode(task_id: str) -> float:
         # Parse action
         action = parse_action(action_text, task_id)
 
-        # [STEP] log
-        # For the action string in logs, we'll use a compact representation
+        # Compact action string for logs
         action_str = ",".join(f"{k}:{v:+.2f}" for k, v in action.items() if k != "reasoning")
-        # log_step placeholder (will be called after env.step() per requirement)
 
         # Step environment
         step_resp = requests.post(
@@ -328,10 +324,10 @@ def run_episode(task_id: str) -> float:
         step_resp.raise_for_status()
         result = step_resp.json()
 
-        state        = result["state"]
-        reward       = result["reward"]
-        done         = result["done"]
-        info         = result["info"]
+        state  = result["state"]
+        reward = result["reward"]
+        done   = result["done"]
+        info   = result["info"]
         rewards.append(reward)
 
         # [STEP] log (mandatory: immediately after env.step())
@@ -345,7 +341,7 @@ def run_episode(task_id: str) -> float:
             break
 
     # [END] log
-    success = score >= 0.5  # arbitrary threshold for success
+    success = score >= 0.5
     log_end(success=success, steps=state["step"], score=score, rewards=rewards)
 
     return score
