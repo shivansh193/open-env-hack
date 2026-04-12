@@ -411,7 +411,7 @@ class MarketEnvironment:
                     score = float(np.clip((sharpe - thresh) / 1.5, 0.0, 1.0))
 
             else:
-                score = 0.0
+                score = 0.001
 
         # Final clamping to strictly (0, 1) as per requirements
         score = max(0.001, min(0.999, score))
