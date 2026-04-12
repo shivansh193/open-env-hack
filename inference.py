@@ -261,6 +261,8 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # ---------------------------------------------------------------------------
 
 def run_episode(task_id: str) -> float:
+    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
+
     """
     Run one complete episode for the given task.
     Emits [START], [STEP], [END] logs to stdout.
@@ -277,7 +279,7 @@ def run_episode(task_id: str) -> float:
     state = data["state"]
 
     # [START] log
-    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
+    # log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPTS[task_id]}]
     rewards  = []
@@ -362,6 +364,7 @@ def main():
             score = run_episode(task_id)
             scores[task_id] = score
         except Exception as e:
+            print(f"[END] success=false steps=0 score=0.000 rewards=", flush=True)
             print(f"[ERROR] {task_id} failed: {e}", file=sys.stderr)
             scores[task_id] = 0.0
 
